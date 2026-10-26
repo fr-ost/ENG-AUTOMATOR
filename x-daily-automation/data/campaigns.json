@@ -6,10 +6,10 @@
       "created_at": "2026-10-26T19:23:04Z",
       "errors": [],
       "performance": {
-        "impressions": 35,
+        "impressions": 43,
         "likes": 2,
         "source": "x_api_public_metrics",
-        "updated_at": "2026-10-26T19:26:10Z"
+        "updated_at": "2026-10-26T21:14:59Z"
       },
       "post_id": "2114799244616089958",
       "post_url": "https://x.com/0x_nation/status/2114799244616089958",
@@ -19,21 +19,21 @@
         "impressions": 1500,
         "likes": 50
       },
-      "updated_at": "2026-10-26T19:26:10Z"
+      "updated_at": "2026-10-26T21:14:59Z"
     },
     "2114800697594278093": {
       "authorized_campaigns": [
         {
           "authorized_at": "2026-10-26T19:26:10Z",
           "authorized_by": "auto",
-          "last_checked_at": "2026-10-26T19:26:10Z",
+          "last_checked_at": "2026-10-26T21:14:59Z",
           "last_error": null,
           "last_status": {
             "charge": 0.0018,
             "currency": "USD",
-            "remains": 1500,
-            "start_count": null,
-            "status": "Pending"
+            "remains": 0,
+            "start_count": 3,
+            "status": "Completed"
           },
           "provider": "smmsoc",
           "quantity": 1500,
@@ -44,7 +44,7 @@
         {
           "authorized_at": "2026-10-26T19:26:10Z",
           "authorized_by": "auto",
-          "last_checked_at": "2026-10-26T19:26:10Z",
+          "last_checked_at": "2026-10-26T21:14:59Z",
           "last_error": null,
           "last_status": {
             "charge": 0.052835,
@@ -64,10 +64,10 @@
       "created_at": "2026-10-26T19:26:10Z",
       "errors": [],
       "performance": {
-        "impressions": 3,
-        "likes": 0,
+        "impressions": 1745,
+        "likes": 4,
         "source": "x_api_public_metrics",
-        "updated_at": "2026-10-26T19:26:10Z"
+        "updated_at": "2026-10-26T21:14:59Z"
       },
       "post_id": "2114800697594278093",
       "post_url": "https://x.com/0x_nation/status/2114800697594278093",
@@ -77,7 +77,7 @@
         "impressions": 1500,
         "likes": 50
       },
-      "updated_at": "2026-10-26T19:26:10Z"
+      "updated_at": "2026-10-26T21:14:59Z"
     }
   },
   "schema_version": 1
