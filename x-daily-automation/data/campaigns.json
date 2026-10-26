@@ -6,10 +6,10 @@
       "created_at": "2026-10-26T19:23:04Z",
       "errors": [],
       "performance": {
-        "impressions": 23,
-        "likes": 1,
+        "impressions": 35,
+        "likes": 2,
         "source": "x_api_public_metrics",
-        "updated_at": "2026-10-26T19:23:04Z"
+        "updated_at": "2026-10-26T19:26:10Z"
       },
       "post_id": "2114799244616089958",
       "post_url": "https://x.com/0x_nation/status/2114799244616089958",
@@ -19,7 +19,65 @@
         "impressions": 1500,
         "likes": 50
       },
-      "updated_at": "2026-10-26T19:23:04Z"
+      "updated_at": "2026-10-26T19:26:10Z"
+    },
+    "2114800697594278093": {
+      "authorized_campaigns": [
+        {
+          "authorized_at": "2026-10-26T19:26:10Z",
+          "authorized_by": "auto",
+          "last_checked_at": "2026-10-26T19:26:10Z",
+          "last_error": null,
+          "last_status": {
+            "charge": 0.0018,
+            "currency": "USD",
+            "remains": 1500,
+            "start_count": null,
+            "status": "Pending"
+          },
+          "provider": "smmsoc",
+          "quantity": 1500,
+          "reference": "789324",
+          "service_id": "3574",
+          "type": "impressions"
+        },
+        {
+          "authorized_at": "2026-10-26T19:26:10Z",
+          "authorized_by": "auto",
+          "last_checked_at": "2026-10-26T19:26:10Z",
+          "last_error": null,
+          "last_status": {
+            "charge": 0.052835,
+            "currency": "USD",
+            "remains": 50,
+            "start_count": null,
+            "status": "Processing"
+          },
+          "provider": "smmsoc",
+          "quantity": 50,
+          "reference": "789325",
+          "service_id": "3481",
+          "type": "likes"
+        }
+      ],
+      "budget": null,
+      "created_at": "2026-10-26T19:26:10Z",
+      "errors": [],
+      "performance": {
+        "impressions": 3,
+        "likes": 0,
+        "source": "x_api_public_metrics",
+        "updated_at": "2026-10-26T19:26:10Z"
+      },
+      "post_id": "2114800697594278093",
+      "post_url": "https://x.com/0x_nation/status/2114800697594278093",
+      "promotion_status": "CAMPAIGN_LINKED",
+      "status": "PLANNED",
+      "targets": {
+        "impressions": 1500,
+        "likes": 50
+      },
+      "updated_at": "2026-10-26T19:26:10Z"
     }
   },
   "schema_version": 1
