@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.env
+x-daily-automation/data/*.json.corrupt
