@@ -18,6 +18,7 @@ from typing import Any, Optional
 from src.campaign_manager import (
     SMMSOCStatusProvider,
     apply_metrics,
+    auto_place_orders,
     ensure_plans,
     new_post_record,
     refresh_campaign_statuses,
@@ -88,6 +89,7 @@ def _run_locked(
     # 1. Discover posts. Any failure leaves the checkpoint untouched.
     scan_ok = False
     scan_ids: set[str] = set()
+    new_posts: list = []
     try:
         result = Scanner(x_client, config).scan(state.get("account"), state.get("last_successful_scan_at"), now)
         summary.username = result.username
@@ -146,8 +148,8 @@ def _run_locked(
     summary.x_requests = x_client.request_count
     summary.x_posts_read = x_client.posts_read
 
-    # 4. SMMSOC read-only checks (optional, never fatal).
-    _smm_checks(config, summary, plans, now, smm_client)
+    # 4. SMMSOC checks: optional balance/service reads + auto-order for new posts.
+    _smm_checks(config, summary, posts, plans, [p.post_id for p in new_posts], now, smm_client)
 
     # 5. Persist. The checkpoint is written last and only after a complete scan.
     if scan_ok:
@@ -209,7 +211,9 @@ def _run_locked(
 def _smm_checks(
     config: Config,
     summary: RunSummary,
+    posts: dict[str, Any],
     plans: dict[str, Any],
+    new_post_ids: list[str],
     now: datetime,
     smm_client: Optional[SMMClient],
 ) -> None:
@@ -244,6 +248,16 @@ def _smm_checks(
                     summary.smm_services.append(summarize_service(item))
         except SMMError as exc:
             summary.warnings.append(f"SMMSOC service metadata unavailable: {exc}")
+
+    # Auto-place orders for new posts if enabled.
+    if config.smm_auto_order and new_post_ids and not config.dry_run:
+        placed = auto_place_orders(new_post_ids, posts, plans, config, smm_client, now)
+        summary.orders_placed.extend(placed)
+        for entry in placed:
+            log.info(
+                "Auto-order placed: post=%s type=%s order=%s qty=%d",
+                entry["post_id"], entry["type"], entry["order_id"], entry["quantity"],
+            )
 
     campaign_summary = refresh_campaign_statuses(plans, {"smmsoc": SMMSOCStatusProvider(smm_client)}, now)
     summary.campaigns_checked = campaign_summary["checked"]

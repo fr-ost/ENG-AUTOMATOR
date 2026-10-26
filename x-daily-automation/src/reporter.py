@@ -36,6 +36,7 @@ class RunSummary:
     smm_requests: int = 0
     smm_balance: Optional[str] = None
     smm_services: list[dict[str, Any]] = field(default_factory=list)
+    orders_placed: list[dict[str, Any]] = field(default_factory=list)
     campaigns_checked: int = 0
     verified_spend: dict[str, float] = field(default_factory=dict)
     telegram_status: str = "disabled"
@@ -119,11 +120,22 @@ def render_markdown(summary: RunSummary, config: Config, posts: dict[str, Any], 
         lines.append("No new posts were found in this scan." if summary.scan_status == "SUCCESS" else "No new posts recorded.")
     lines.append("")
 
+    if summary.orders_placed:
+        lines += [f"## Auto-orders placed this run: {len(summary.orders_placed)}", ""]
+        lines += ["| Post | Type | Order ID | Quantity |", "| --- | --- | --- | --- |"]
+        for o in summary.orders_placed:
+            pid = o["post_id"]
+            plan = plans.get(pid, {})
+            url = plan.get("post_url") or posts.get(pid, {}).get("post_url") or pid
+            lines.append(f"| [{pid}]({url}) | {o['type']} | {o['order_id']} | {o['quantity']:,} |")
+        lines.append("")
+
     today = posts_discovered_on(posts, summary.bd_date)
     lines += [f"## Promotion planning — posts discovered on {summary.bd_date}: {len(today)}", ""]
     lines.append(
-        f"Targets per post: **{config.impression_target:,} impressions** and **{config.like_target:,} likes** "
-        "(planning goals only — the bot does not buy engagement)."
+        f"Targets per post: **{config.impression_target:,} impressions** and **{config.like_target:,} likes**"
+        + (" (auto-ordered via SMMSOC)" if config.smm_auto_order else " (planning goals only — no auto-orders)")
+        + "."
     )
     lines.append("")
     if today:
@@ -202,6 +214,10 @@ def render_telegram(summary: RunSummary, config: Config) -> str:
     for post in summary.new_posts:
         lines.append(f"• {post['post_url']}")
     lines.append(f"Planning targets per post: {config.impression_target:,} impressions, {config.like_target:,} likes")
+    if summary.orders_placed:
+        lines.append(f"Auto-orders placed: {len(summary.orders_placed)}")
+        for o in summary.orders_placed:
+            lines.append(f"  • {o['type']} order #{o['order_id']} — {o['quantity']:,} units")
     if summary.smm_balance:
         lines.append(f"SMMSOC balance: {summary.smm_balance}")
     lines.append(f"X API requests: {summary.x_requests}; duplicates skipped: {summary.duplicates_skipped}")
