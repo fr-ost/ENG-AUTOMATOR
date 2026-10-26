@@ -226,6 +226,84 @@ def test_smm_balance_and_service_metadata_in_report(mocked, make_config):
     assert "smm-key" not in text
 
 
+def test_auto_order_placed_for_new_posts(mocked, make_config):
+    cfg = make_config(SMM_ENABLED="true", SMM_AUTO_ORDER="true", SMM_API_URL=SMM_URL, SMM_API_KEY="smm-key",
+                      SMM_IMPRESSION_SERVICE_ID="5", SMM_LIKE_SERVICE_ID="7")
+    mocked.get(USER_URL, json=user_body())
+    mocked.get(TIMELINE_URL, json=timeline_body(TWO_POSTS))
+    mocked.post(SMM_URL, json={"balance": "50.00", "currency": "USD"})   # balance
+    mocked.post(SMM_URL, json={"order": 11111})  # impression order post 1
+    mocked.post(SMM_URL, json={"order": 11112})  # like order post 1
+    mocked.post(SMM_URL, json={"order": 11113})  # impression order post 2
+    mocked.post(SMM_URL, json={"order": 11114})  # like order post 2
+    smm = SMMClient(SMM_URL, "smm-key", max_retries=0, sleep=no_sleep)
+
+    assert main.run(cfg, now=NOW, x_client=client(), smm_client=smm) == 0
+    campaigns = read(cfg, "campaigns.json")["plans"]
+    for pid in ("1866000000000000001", "1866000000000000002"):
+        types_ordered = {c["type"] for c in campaigns[pid]["authorized_campaigns"]}
+        assert types_ordered == {"impressions", "likes"}
+    text = report(cfg)
+    assert "Auto-orders placed this run: 4" in text
+    assert "auto-ordered via SMMSOC" in text
+
+
+def test_auto_order_is_idempotent_on_rerun(mocked, make_config):
+    cfg = make_config(SMM_ENABLED="true", SMM_AUTO_ORDER="true", SMM_API_URL=SMM_URL, SMM_API_KEY="smm-key",
+                      SMM_IMPRESSION_SERVICE_ID="5", SMM_LIKE_SERVICE_ID="7")
+    mocked.get(USER_URL, json=user_body())
+    mocked.get(TIMELINE_URL, json=timeline_body(TWO_POSTS))
+    # First run: balance + 4 orders
+    for body in [{"balance": "50.00", "currency": "USD"}, {"order": 1}, {"order": 2}, {"order": 3}, {"order": 4}]:
+        mocked.post(SMM_URL, json=body)
+    smm = SMMClient(SMM_URL, "smm-key", max_retries=0, sleep=no_sleep)
+    assert main.run(cfg, now=NOW, x_client=client(), smm_client=smm) == 0
+    order_calls_first = smm.request_count
+
+    # Second run: same posts come back; no new orders should be placed.
+    mocked.replace("GET", TIMELINE_URL, json=timeline_body(TWO_POSTS))
+    mocked.post(SMM_URL, json={"balance": "50.00", "currency": "USD"})
+    smm2 = SMMClient(SMM_URL, "smm-key", max_retries=0, sleep=no_sleep)
+    assert main.run(cfg, now=NOW + timedelta(minutes=30), x_client=client(), smm_client=smm2) == 0
+
+    # No additional place_order calls in second run (only a balance check at most).
+    campaigns = read(cfg, "campaigns.json")["plans"]
+    for pid in ("1866000000000000001", "1866000000000000002"):
+        assert len(campaigns[pid]["authorized_campaigns"]) == 2  # unchanged from first run
+
+
+def test_auto_order_failure_does_not_fail_scan(mocked, make_config):
+    cfg = make_config(SMM_ENABLED="true", SMM_AUTO_ORDER="true", SMM_API_URL=SMM_URL, SMM_API_KEY="smm-key",
+                      SMM_IMPRESSION_SERVICE_ID="5")
+    mocked.get(USER_URL, json=user_body())
+    mocked.get(TIMELINE_URL, json=timeline_body(TWO_POSTS))
+    mocked.post(SMM_URL, json={"balance": "0.00", "currency": "USD"})
+    mocked.post(SMM_URL, json={"error": "Insufficient balance"})
+    mocked.post(SMM_URL, json={"error": "Insufficient balance"})
+    smm = SMMClient(SMM_URL, "smm-key", max_retries=0, sleep=no_sleep)
+
+    assert main.run(cfg, now=NOW, x_client=client(), smm_client=smm) == 0
+    text = report(cfg)
+    assert "Auto-orders placed" not in text  # no orders in table
+
+
+def test_auto_order_skipped_in_dry_run(mocked, make_config):
+    from urllib.parse import parse_qs
+    cfg = make_config(DRY_RUN="true", SMM_ENABLED="true", SMM_AUTO_ORDER="true",
+                      SMM_API_URL=SMM_URL, SMM_API_KEY="smm-key", SMM_IMPRESSION_SERVICE_ID="5")
+    mocked.get(USER_URL, json=user_body())
+    mocked.get(TIMELINE_URL, json=timeline_body(TWO_POSTS))
+    smm = SMMClient(SMM_URL, "smm-key", max_retries=0, sleep=no_sleep)
+    assert main.run(cfg, now=NOW, x_client=client(), smm_client=smm) == 0
+    # No "add" order calls made (dry_run blocks ordering)
+    add_calls = [
+        c for c in mocked.calls
+        if c.request.method == "POST" and
+        parse_qs(c.request.body).get("action", [""])[0] == "add"
+    ]
+    assert len(add_calls) == 0
+
+
 def test_smm_failure_is_not_fatal(mocked, make_config):
     cfg = make_config(SMM_ENABLED="true", SMM_API_URL=SMM_URL, SMM_API_KEY="smm-key")
     mocked.get(USER_URL, json=user_body())

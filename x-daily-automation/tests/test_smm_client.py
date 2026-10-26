@@ -4,7 +4,7 @@ import pytest
 import requests
 
 from src import smm_client
-from src.smm_client import SMMAuthError, SMMClient, SMMError, SMMResponseError, summarize_service
+from src.smm_client import SMMAuthError, SMMClient, SMMError, SMMResponseError, summarize_service, OrderResult
 
 URL = "https://panel.example.test/api/v2"
 KEY = "smm-secret-key-123"
@@ -56,10 +56,33 @@ def test_order_status_is_read_only_lookup(mocked, client):
     assert form(mocked.calls[0]) == {"key": KEY, "action": "status", "order": "23501"}
 
 
-def test_client_has_no_order_submission():
-    assert "add" not in smm_client.ACTIONS
-    for name in ("add_order", "create_order", "place_order", "order", "add"):
-        assert not hasattr(SMMClient, name)
+def test_place_order_success(mocked, client):
+    mocked.post(URL, json={"order": 98765})
+    result = client.place_order("7", "https://x.com/user/status/1234", 1000)
+    assert isinstance(result, OrderResult)
+    assert result.order_id == "98765"
+    sent = form(mocked.calls[0])
+    assert sent == {"key": KEY, "action": "add", "service": "7", "link": "https://x.com/user/status/1234", "quantity": "1000"}
+
+
+def test_place_order_response_missing_order_field(mocked, client):
+    mocked.post(URL, json={"status": "ok"})
+    with pytest.raises(SMMResponseError, match="'order'"):
+        client.place_order("7", "https://x.com/user/status/1234", 1000)
+
+
+def test_place_order_validation():
+    c = SMMClient(URL, KEY, max_retries=0, sleep=no_sleep)
+    with pytest.raises(ValueError):
+        c.place_order("", "https://x.com/u/status/1", 100)
+    with pytest.raises(ValueError):
+        c.place_order("7", "http://x.com/u/status/1", 100)  # not https
+    with pytest.raises(ValueError):
+        c.place_order("7", "https://x.com/u/status/1", 0)
+
+
+def test_add_action_is_in_actions():
+    assert "add" in smm_client.ACTIONS
 
 
 @pytest.mark.parametrize("message", ["Invalid API key", "Incorrect key"])

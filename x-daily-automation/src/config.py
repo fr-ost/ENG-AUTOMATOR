@@ -49,8 +49,9 @@ class Config:
     promotion_budget: Optional[float] = None
     promotion_budget_currency: str = "USD"
 
-    # SMMSOC (read-only)
+    # SMMSOC
     smm_enabled: bool = False
+    smm_auto_order: bool = False  # place orders automatically for new posts
     smm_api_url: Optional[str] = None
     smm_api_key: Optional[str] = field(default=None, repr=False)
     smm_impression_service_id: Optional[str] = None
@@ -174,6 +175,7 @@ def load_config(env: Optional[Mapping[str, str]] = None) -> Config:
             errors.append("SCAN_SINCE must be an ISO-8601 timestamp, e.g. 2026-01-31T00:00:00Z")
 
     smm_enabled = _bool(env, "SMM_ENABLED", False)
+    smm_auto_order = _bool(env, "SMM_AUTO_ORDER", False)
     smm_url = _get(env, "SMM_API_URL")
     smm_key = _get(env, "SMM_API_KEY")
     if smm_enabled:
@@ -232,6 +234,7 @@ def load_config(env: Optional[Mapping[str, str]] = None) -> Config:
         x_user_id=user_id,
         scan_since_override=scan_since,
         smm_enabled=smm_enabled,
+        smm_auto_order=smm_auto_order,
         smm_api_url=smm_url,
         smm_api_key=smm_key,
         smm_impression_service_id=_get(env, "SMM_IMPRESSION_SERVICE_ID"),

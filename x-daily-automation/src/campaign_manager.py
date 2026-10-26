@@ -1,12 +1,12 @@
-"""Promotion planning records and read-only status tracking.
+"""Promotion planning records, order placement, and status tracking.
 
-A planning record holds *targets* (what you hope a post achieves) and is kept
-separate from *authorized campaigns* (paid promotions that you created yourself,
-outside this bot, and then linked by reference). This module never creates,
-submits, or funds a campaign or order.
+A planning record holds *targets* (what you hope a post achieves).  When
+SMM_AUTO_ORDER=true the bot places SMM panel orders for each newly discovered
+post and records the order reference in the plan's "authorized_campaigns" list.
 
-Linking a campaign: edit data/campaigns.json and append to the post's
-"authorized_campaigns" list, e.g.
+Auto-placed orders carry {"authorized_by": "auto"}.  Orders you place yourself
+outside the bot can also be tracked: edit data/campaigns.json and add an entry
+to the post's "authorized_campaigns" list, e.g.
   {"provider": "x_ads", "reference": "<campaign id from X Ads Manager>",
    "authorized_by": "you", "authorized_at": "2026-01-31T12:00:00Z"}
 Providers with a registered read-only status checker are refreshed each run.
@@ -20,7 +20,7 @@ from typing import Any, Optional, Protocol
 
 from .config import Config, format_iso, parse_iso_datetime
 from .scanner import Post
-from .smm_client import SMMClient, SMMError
+from .smm_client import SMMClient, SMMError, OrderResult  # noqa: F401 (OrderResult re-exported for type hints)
 
 log = logging.getLogger(__name__)
 
@@ -199,6 +199,81 @@ def refresh_campaign_statuses(
     for plan in plans.values():
         plan["promotion_status"] = derive_promotion_status(plan)
     return summary
+
+
+def auto_place_orders(
+    new_post_ids: list[str],
+    posts: dict[str, Any],
+    plans: dict[str, Any],
+    config: "Config",
+    smm_client: SMMClient,
+    now: datetime,
+) -> list[dict[str, Any]]:
+    """Place SMM panel orders for newly discovered posts (SMM_AUTO_ORDER=true).
+
+    For each new post, places one impression order and/or one like order
+    according to the configured service IDs and target quantities.  Already-
+    ordered types are skipped so reruns are idempotent.  Failures are logged
+    and stored in the plan's 'errors' list but never propagate — a failed order
+    never aborts the run.
+
+    Returns a list of placement result dicts (post_id, type, order_id, quantity).
+    """
+    stamp = format_iso(now)
+    results: list[dict[str, Any]] = []
+
+    for post_id in new_post_ids:
+        plan = plans.get(post_id)
+        post = posts.get(post_id)
+        if plan is None or post is None:
+            continue
+
+        link = post.get("post_url", "")
+        targets = plan.get("targets", {})
+
+        # Build the list of (type_label, service_id, quantity) to try.
+        orders_to_place: list[tuple[str, str, int]] = []
+        if config.smm_impression_service_id:
+            qty = int(targets.get("impressions", 0))
+            if qty > 0:
+                orders_to_place.append(("impressions", config.smm_impression_service_id, qty))
+        if config.smm_like_service_id:
+            qty = int(targets.get("likes", 0))
+            if qty > 0:
+                orders_to_place.append(("likes", config.smm_like_service_id, qty))
+
+        for order_type, service_id, quantity in orders_to_place:
+            # Idempotency: skip if an order of this type was already recorded.
+            already = any(c.get("type") == order_type for c in plan.get("authorized_campaigns", []))
+            if already:
+                log.debug("Skipping %s order for post %s — already recorded", order_type, post_id)
+                continue
+
+            try:
+                result = smm_client.place_order(service_id, link, quantity)
+                campaign_entry: dict[str, Any] = {
+                    "provider": "smmsoc",
+                    "reference": result.order_id,
+                    "authorized_by": "auto",
+                    "authorized_at": stamp,
+                    "service_id": service_id,
+                    "type": order_type,
+                    "quantity": quantity,
+                }
+                plan.setdefault("authorized_campaigns", []).append(campaign_entry)
+                plan["updated_at"] = stamp
+                results.append({"post_id": post_id, "type": order_type, "order_id": result.order_id, "quantity": quantity})
+                log.info(
+                    "Placed %s order %s for post %s (service=%s qty=%d)",
+                    order_type, result.order_id, post_id, service_id, quantity,
+                )
+            except (SMMError, ValueError) as exc:
+                msg = f"Auto-order failed ({order_type} for post {post_id}): {exc}"
+                plan.setdefault("errors", []).append(msg)
+                plan["updated_at"] = stamp
+                log.warning("%s", msg)
+
+    return results
 
 
 def tracked_post_ids(posts: dict[str, Any], now: datetime, lookback_days: int, exclude: Optional[set[str]] = None) -> list[str]:

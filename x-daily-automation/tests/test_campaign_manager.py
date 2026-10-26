@@ -1,18 +1,21 @@
 from datetime import timedelta
 
+from unittest.mock import MagicMock
+
 from src.campaign_manager import (
     PROMO_CAMPAIGN_LINKED,
     PROMO_NOT_STARTED,
     PROMO_TARGETS_REACHED,
     XAdsStatusProvider,
     apply_metrics,
+    auto_place_orders,
     ensure_plans,
     new_post_record,
     refresh_campaign_statuses,
     tracked_post_ids,
 )
 from src.scanner import Post
-from src.smm_client import SMMError
+from src.smm_client import OrderResult, SMMError
 from tests.conftest import NOW
 
 
@@ -103,6 +106,88 @@ def test_refresh_errors_are_recorded_not_raised(make_config):
     assert summary["checked"] == 0
     assert len(summary["errors"]) == 2
     assert plans["1"]["authorized_campaigns"][0]["last_error"] == "service unavailable"
+
+
+def _smm_client_mock(order_id="99001"):
+    client = MagicMock()
+    client.place_order.return_value = OrderResult(order_id=order_id)
+    return client
+
+
+def test_auto_place_orders_places_impression_and_like(make_config):
+    posts, plans = posts_with("1"), {}
+    cfg = make_config(SMM_IMPRESSION_SERVICE_ID="5", SMM_LIKE_SERVICE_ID="7")
+    ensure_plans(posts, plans, cfg, NOW)
+    client = _smm_client_mock("99001")
+
+    results = auto_place_orders(["1"], posts, plans, cfg, client, NOW)
+
+    assert len(results) == 2
+    types = {r["type"] for r in results}
+    assert types == {"impressions", "likes"}
+    campaigns = plans["1"]["authorized_campaigns"]
+    assert len(campaigns) == 2
+    assert all(c["authorized_by"] == "auto" for c in campaigns)
+    assert all(c["provider"] == "smmsoc" for c in campaigns)
+    imp_order = next(c for c in campaigns if c["type"] == "impressions")
+    assert imp_order["service_id"] == "5"
+    assert imp_order["quantity"] == 1000
+    like_order = next(c for c in campaigns if c["type"] == "likes")
+    assert like_order["service_id"] == "7"
+    assert like_order["quantity"] == 30
+    assert client.place_order.call_count == 2
+
+
+def test_auto_place_orders_only_impression_service(make_config):
+    posts, plans = posts_with("1"), {}
+    cfg = make_config(SMM_IMPRESSION_SERVICE_ID="5")
+    ensure_plans(posts, plans, cfg, NOW)
+    client = _smm_client_mock()
+
+    results = auto_place_orders(["1"], posts, plans, cfg, client, NOW)
+
+    assert len(results) == 1
+    assert results[0]["type"] == "impressions"
+    assert client.place_order.call_count == 1
+
+
+def test_auto_place_orders_is_idempotent(make_config):
+    posts, plans = posts_with("1"), {}
+    cfg = make_config(SMM_IMPRESSION_SERVICE_ID="5")
+    ensure_plans(posts, plans, cfg, NOW)
+    client = _smm_client_mock()
+
+    auto_place_orders(["1"], posts, plans, cfg, client, NOW)
+    auto_place_orders(["1"], posts, plans, cfg, client, NOW)  # second call is a no-op
+
+    assert client.place_order.call_count == 1
+    assert len(plans["1"]["authorized_campaigns"]) == 1
+
+
+def test_auto_place_orders_error_recorded_not_raised(make_config):
+    posts, plans = posts_with("1"), {}
+    cfg = make_config(SMM_IMPRESSION_SERVICE_ID="5")
+    ensure_plans(posts, plans, cfg, NOW)
+    client = MagicMock()
+    client.place_order.side_effect = SMMError("Insufficient balance")
+
+    results = auto_place_orders(["1"], posts, plans, cfg, client, NOW)
+
+    assert results == []
+    assert len(plans["1"]["errors"]) == 1
+    assert "Insufficient balance" in plans["1"]["errors"][0]
+
+
+def test_auto_place_orders_skips_unknown_post_ids(make_config):
+    posts, plans = posts_with("1"), {}
+    cfg = make_config(SMM_IMPRESSION_SERVICE_ID="5")
+    ensure_plans(posts, plans, cfg, NOW)
+    client = _smm_client_mock()
+
+    results = auto_place_orders(["999"], posts, plans, cfg, client, NOW)
+
+    assert results == []
+    assert client.place_order.call_count == 0
 
 
 def test_tracked_post_ids_respects_lookback():

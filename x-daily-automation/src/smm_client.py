@@ -1,4 +1,4 @@
-"""Read-only client for the SMMSOC panel API.
+"""SMM panel API v2 client for SMMSOC.
 
 VERIFICATION STATUS — READ BEFORE ENABLING
 ------------------------------------------
@@ -9,7 +9,7 @@ by most SMM panel "API v2" implementations and is UNVERIFIED for SMMSOC:
 
   * a single endpoint (configured as SMM_API_URL, e.g. https://smmsoc.com/api/v2)
   * HTTP POST, form-encoded, with parameters `key` and `action`
-  * actions used here: `balance`, `services`, `status` (+ `order`)
+  * actions used here: `balance`, `services`, `status`, `add`
   * errors returned as a JSON object with an `error` string
 
 Every response is validated; anything that does not match is reported as an
@@ -17,8 +17,8 @@ error rather than guessed at. The client is disabled unless SMM_ENABLED=true.
 Compare ACTIONS and the response checks below with the official docs before
 turning it on (see README "Verify the SMMSOC API").
 
-This client intentionally has NO method that places orders. Submitting
-artificial-engagement orders is out of scope for this project.
+Order placement (action=add) is gated behind SMM_AUTO_ORDER=true and is only
+called from campaign_manager.auto_place_orders for newly discovered posts.
 """
 
 from __future__ import annotations
@@ -35,11 +35,11 @@ log = logging.getLogger(__name__)
 
 DOCUMENTATION_VERIFIED = False
 
-# Read-only actions only. Do not add order-creating actions here.
 ACTIONS = {
     "balance": "balance",
     "services": "services",
     "status": "status",
+    "add": "add",  # place a new order; only called when SMM_AUTO_ORDER=true
 }
 
 _AUTH_HINTS = ("key", "auth", "unauthor", "forbidden", "token")
@@ -61,6 +61,11 @@ class SMMResponseError(SMMError):
 class Balance:
     amount: float
     currency: Optional[str]
+
+
+@dataclass(frozen=True)
+class OrderResult:
+    order_id: str  # the panel's numeric order reference, kept as a string
 
 
 @dataclass(frozen=True)
@@ -205,6 +210,23 @@ class SMMClient:
             start_count=_opt_int(body.get("start_count")),
             remains=_opt_int(body.get("remains")),
         )
+
+    def place_order(self, service_id: str, link: str, quantity: int) -> OrderResult:
+        """Submit a new order to the SMM panel (action=add).
+
+        Only called when SMM_AUTO_ORDER=true. The panel's standard response is
+        {"order": <integer>}. Raises SMMError on any failure.
+        """
+        if not str(service_id).strip():
+            raise ValueError("service_id is required")
+        if not link.startswith("https://"):
+            raise ValueError("link must be an https:// URL")
+        if quantity <= 0:
+            raise ValueError("quantity must be a positive integer")
+        body = self._post("add", service=str(service_id), link=link, quantity=str(quantity))
+        if not isinstance(body, dict) or "order" not in body:
+            raise SMMResponseError("Order response has no 'order' field")
+        return OrderResult(order_id=str(body["order"]))
 
 
 def summarize_service(item: dict[str, Any]) -> dict[str, Any]:
