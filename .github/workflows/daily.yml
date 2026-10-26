@@ -81,6 +81,7 @@ jobs:
           PROMOTION_BUDGET: ${{ vars.PROMOTION_BUDGET }}
           PROMOTION_BUDGET_CURRENCY: ${{ vars.PROMOTION_BUDGET_CURRENCY }}
           SMM_ENABLED: ${{ vars.SMM_ENABLED }}
+          SMM_AUTO_ORDER: ${{ vars.SMM_AUTO_ORDER }}
           SMM_API_URL: ${{ vars.SMM_API_URL }}
           SMM_IMPRESSION_SERVICE_ID: ${{ vars.SMM_IMPRESSION_SERVICE_ID }}
           SMM_LIKE_SERVICE_ID: ${{ vars.SMM_LIKE_SERVICE_ID }}
