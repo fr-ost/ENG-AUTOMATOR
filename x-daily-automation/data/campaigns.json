@@ -26,7 +26,7 @@
         {
           "authorized_at": "2026-10-26T19:26:10Z",
           "authorized_by": "auto",
-          "last_checked_at": "2026-10-26T21:14:59Z",
+          "last_checked_at": "2026-10-27T21:01:39Z",
           "last_error": null,
           "last_status": {
             "charge": 0.0018,
@@ -44,14 +44,14 @@
         {
           "authorized_at": "2026-10-26T19:26:10Z",
           "authorized_by": "auto",
-          "last_checked_at": "2026-10-26T21:14:59Z",
+          "last_checked_at": "2026-10-27T21:01:39Z",
           "last_error": null,
           "last_status": {
-            "charge": 0.052835,
+            "charge": 0.0,
             "currency": "USD",
             "remains": 50,
-            "start_count": null,
-            "status": "Processing"
+            "start_count": 0,
+            "status": "Canceled"
           },
           "provider": "smmsoc",
           "quantity": 50,
@@ -77,7 +77,65 @@
         "impressions": 1500,
         "likes": 50
       },
-      "updated_at": "2026-10-26T21:14:59Z"
+      "updated_at": "2026-10-27T21:01:39Z"
+    },
+    "2115070089326178668": {
+      "authorized_campaigns": [
+        {
+          "authorized_at": "2026-10-27T21:01:39Z",
+          "authorized_by": "auto",
+          "last_checked_at": "2026-10-27T21:01:39Z",
+          "last_error": null,
+          "last_status": {
+            "charge": 0.0018,
+            "currency": "USD",
+            "remains": 1500,
+            "start_count": null,
+            "status": "Pending"
+          },
+          "provider": "smmsoc",
+          "quantity": 1500,
+          "reference": "792215",
+          "service_id": "3574",
+          "type": "impressions"
+        },
+        {
+          "authorized_at": "2026-10-27T21:01:39Z",
+          "authorized_by": "auto",
+          "last_checked_at": "2026-10-27T21:01:39Z",
+          "last_error": null,
+          "last_status": {
+            "charge": 0.052835,
+            "currency": "USD",
+            "remains": 50,
+            "start_count": null,
+            "status": "Pending"
+          },
+          "provider": "smmsoc",
+          "quantity": 50,
+          "reference": "792216",
+          "service_id": "3481",
+          "type": "likes"
+        }
+      ],
+      "budget": null,
+      "created_at": "2026-10-27T21:01:39Z",
+      "errors": [],
+      "performance": {
+        "impressions": 1784,
+        "likes": 37,
+        "source": "x_api_public_metrics",
+        "updated_at": "2026-10-27T21:01:39Z"
+      },
+      "post_id": "2115070089326178668",
+      "post_url": "https://x.com/0x_nation/status/2115070089326178668",
+      "promotion_status": "CAMPAIGN_LINKED",
+      "status": "PLANNED",
+      "targets": {
+        "impressions": 1500,
+        "likes": 50
+      },
+      "updated_at": "2026-10-27T21:01:39Z"
     }
   },
   "schema_version": 1

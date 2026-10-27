@@ -35,6 +35,24 @@
       },
       "status": "PLANNED",
       "text": "Sports leagues discovering prediction markets are “fan engagement” is funny until the market is about your own game.\n\nThe NBA now has an MOU with the CFTC to share info and keep lines open around market integrity, and Kalshi and Polymarket are its preferred prediction market"
+    },
+    "2115070089326178668": {
+      "created_at": "2026-10-27T13:16:20.000Z",
+      "discovered_at": "2026-10-27T21:01:39Z",
+      "kind": "quote",
+      "metrics_updated_at": "2026-10-27T21:01:39Z",
+      "post_id": "2115070089326178668",
+      "post_url": "https://x.com/0x_nation/status/2115070089326178668",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1784,
+        "like_count": 37,
+        "quote_count": 0,
+        "reply_count": 41,
+        "retweet_count": 0
+      },
+      "status": "PLANNED",
+      "text": "gm🌻\n\nthe annoying part of using coding agents is everything around the code. checking their work, dealing with CI failures, and constantly giving them context.\n\nthat’s why @superplanehq caught my attention. it handles that coordination so your team can focus on building and https://t.co/FZyF94Iu9C"
     }
   },
   "schema_version": 1
